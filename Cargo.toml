@@ -1,0 +1,37 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/razer-protocol",
+    "crates/razer-device",
+    "crates/synapsex-i18n",
+    "crates/synapsex-cli",
+    "crates/synapsex-ui",
+]
+default-members = [
+    "crates/razer-protocol",
+    "crates/razer-device",
+    "crates/synapsex-i18n",
+    "crates/synapsex-cli",
+    "crates/synapsex-ui",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "GPL-2.0-or-later"
+authors = ["Synapsex contributors"]
+repository = "https://github.com/iMacnucintosh/synapsex"
+
+[workspace.dependencies]
+razer_protocol = { path = "crates/razer-protocol" }
+razer_device = { path = "crates/razer-device" }
+synapsex_i18n = { path = "crates/synapsex-i18n" }
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+nix = { version = "0.29", features = ["ioctl", "fs"] }
+libc = "0.2"
+dirs = "6"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"] }

@@ -1,0 +1,10 @@
+[package]
+name = "razer_protocol"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Razer HID report framing and Basilisk V4 Pro command builders"
+
+[dependencies]
+thiserror = { workspace = true }
+serde = { workspace = true }

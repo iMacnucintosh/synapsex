@@ -1,0 +1,16 @@
+[package]
+name = "razer_device"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Linux hidraw transport and Basilisk V4 Pro device session"
+
+[dependencies]
+razer_protocol = { workspace = true }
+synapsex_i18n = { workspace = true }
+thiserror = { workspace = true }
+nix = { workspace = true }
+libc = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+dirs = { workspace = true }

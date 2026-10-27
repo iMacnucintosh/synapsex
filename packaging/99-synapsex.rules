@@ -1,0 +1,11 @@
+# Synapsex — allow userspace HID feature reports for Basilisk V4 Pro
+# Install: sudo cp packaging/99-synapsex.rules /etc/udev/rules.d/
+#          sudo udevadm control --reload-rules && sudo udevadm trigger
+
+# Wired
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="00e2", MODE="0660", TAG+="uaccess", GROUP="plugdev"
+# HyperSpeed dongle
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="00e3", MODE="0660", TAG+="uaccess", GROUP="plugdev"
+# Also tag the USB device for completeness
+SUBSYSTEM=="usb", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="00e2", MODE="0660", TAG+="uaccess", GROUP="plugdev"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="00e3", MODE="0660", TAG+="uaccess", GROUP="plugdev"

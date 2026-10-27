@@ -1,0 +1,17 @@
+[package]
+name = "synapsex-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Hardware probe CLI for Synapsex (Linux)"
+
+[[bin]]
+name = "synapsex-cli"
+path = "src/main.rs"
+
+[dependencies]
+razer_protocol = { workspace = true }
+razer_device = { workspace = true }
+synapsex_i18n = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }

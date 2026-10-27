@@ -1,0 +1,8 @@
+[package]
+name = "synapsex_i18n"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Spanish/English strings for Synapsex"
+
+[dependencies]

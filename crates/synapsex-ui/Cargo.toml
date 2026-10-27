@@ -1,0 +1,19 @@
+[package]
+name = "synapsex-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Synapsex — GTK4 UI for Razer Basilisk V4 Pro on Linux"
+
+[[bin]]
+name = "synapsex"
+path = "src/main.rs"
+
+[dependencies]
+razer_protocol = { workspace = true }
+razer_device = { workspace = true }
+synapsex_i18n = { workspace = true }
+anyhow = { workspace = true }
+gtk = { package = "gtk4", version = "0.9", features = ["v4_12"] }
+adw = { package = "libadwaita", version = "0.7", features = ["v1_5"] }
+glib = "0.20"
