@@ -1,7 +1,10 @@
+mod profile_backup;
+
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use razer_device::{list_devices, open_control, DeviceSession};
 use razer_protocol::{commands, onboard, LightingEffect, LightingZone, Rgb};
+use std::path::PathBuf;
 use synapsex_i18n as i18n;
 
 #[derive(Parser)]
@@ -44,12 +47,15 @@ enum Command {
         #[arg(long)]
         brightness: Option<u8>,
     },
-    /// Power / sleep / low-battery
+    /// Power / sleep / low-battery / smart dimming
     Power {
         #[arg(long)]
         idle: Option<u16>,
         #[arg(long)]
         low_battery: Option<u8>,
+        /// Wireless Smart Dimming (dims lights while moving)
+        #[arg(long)]
+        smart_dimming: Option<bool>,
     },
     /// Scroll wheel settings
     Wheel {
@@ -82,15 +88,44 @@ enum Command {
         #[arg(long)]
         watch: bool,
     },
-    /// Button remaps
+    /// Button remaps (normal + HyperShift layers from hardware)
     Buttons {
         #[arg(long)]
         set: Option<String>,
         #[arg(long)]
         to: Option<String>,
+        /// Remap layer: 0 = normal (default), 1 = HyperShift
+        #[arg(long, default_value_t = 0)]
+        layer: u8,
     },
     /// Dump full state as text
     State,
+    /// Export / restore an onboard profile slot as JSON
+    Profile {
+        #[command(subcommand)]
+        action: ProfileCmd,
+    },
+}
+
+#[derive(Subcommand)]
+enum ProfileCmd {
+    /// Write slot settings (DPI, wheel, lights, L0/L1 remaps) to a JSON file
+    Export {
+        /// Onboard slot number (default: active / 1)
+        #[arg(long, default_value_t = 1)]
+        slot: u8,
+        /// Output path
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+    /// Restore a JSON snapshot onto a slot (activates that slot first)
+    Import {
+        /// Snapshot file
+        path: PathBuf,
+        /// Override destination slot (default: slot field inside the file)
+        #[arg(long)]
+        slot: Option<u8>,
+    },
 }
 
 fn parse_color(s: &str) -> Result<Rgb> {
@@ -196,10 +231,16 @@ fn main() -> Result<()> {
             let mut session = DeviceSession::open()?;
             if let Some(hz) = set {
                 session.set_poll(hz)?;
-                println!("Poll set to {hz} Hz");
+                let readback = session.read_poll_hz();
+                println!("Poll set to {hz} Hz (readback {readback} Hz)");
+            } else {
+                let state = session.read_state()?;
+                println!(
+                    "Poll {} Hz (supported: {:?})",
+                    state.poll_hz,
+                    commands::supported_polling_rates(state.pid)
+                );
             }
-            let state = session.read_state()?;
-            println!("Poll {} Hz (supported: {:?})", state.poll_hz, commands::supported_polling_rates(state.pid));
         }
         Command::Rgb {
             zone,
@@ -240,7 +281,11 @@ fn main() -> Result<()> {
                 );
             }
         }
-        Command::Power { idle, low_battery } => {
+        Command::Power {
+            idle,
+            low_battery,
+            smart_dimming,
+        } => {
             let mut session = DeviceSession::open()?;
             if let Some(s) = idle {
                 session.set_idle(s)?;
@@ -248,10 +293,13 @@ fn main() -> Result<()> {
             if let Some(p) = low_battery {
                 session.set_low_battery(p)?;
             }
+            if let Some(v) = smart_dimming {
+                session.set_smart_dimming(v)?;
+            }
             let state = session.read_state()?;
             println!(
-                "Idle {}s  low-battery threshold {}%",
-                state.idle_seconds, state.low_battery_percent
+                "Idle {}s  low-battery threshold {}%  smart_dimming={}",
+                state.idle_seconds, state.low_battery_percent, state.smart_dimming
             );
         }
         Command::Wheel {
@@ -339,13 +387,15 @@ fn main() -> Result<()> {
                 }
             }
             let state = session.read_state()?;
+            // Full per-slot dump (buttons) — slow path intentional for CLI inspection.
+            let profiles = session.read_all_profiles()?;
             println!(
                 "Active slot {} ({})  — {} profile(s) on mouse",
                 state.active_slot,
                 state.slot_name,
-                state.profiles.len()
+                profiles.len()
             );
-            for p in &state.profiles {
+            for p in &profiles {
                 let mark = if p.is_active { "●" } else { " " };
                 let lights = p
                     .zones
@@ -376,30 +426,64 @@ fn main() -> Result<()> {
                 );
                 println!("    lights: {lights}");
                 for b in &p.buttons {
-                    println!("    button 0x{:02x} {:<22} {}", b.table_id, b.name, b.label);
+                    println!(
+                        "    button L0 0x{:02x} {:<22} {}",
+                        b.table_id, b.name, b.label
+                    );
+                }
+                for b in &p.hypershift_buttons {
+                    println!(
+                        "    button L1 0x{:02x} {:<22} {}",
+                        b.table_id, b.name, b.label
+                    );
                 }
             }
         }
-        Command::Buttons { set, to } => {
+        Command::Buttons { set, to, layer } => {
             let mut session = DeviceSession::open()?;
             if let (Some(name), Some(target)) = (set, to) {
                 let ctrl = onboard::basilisk_v4_pro_buttons()
                     .iter()
                     .find(|c| c.name.eq_ignore_ascii_case(&name) || c.table_id.to_string() == name)
                     .context("unknown button")?;
-                let block = onboard::remap_presets()
+                let mut block = onboard::remap_presets()
                     .iter()
                     .find(|(n, _)| n.eq_ignore_ascii_case(&target))
                     .map(|(_, b)| *b)
                     .context("unknown remap target")?;
-                session.set_button(ctrl.table_id, block)?;
-                println!("{} → {}", ctrl.name, target);
+                if onboard::is_hypershift_block(&block) {
+                    block = onboard::hypershift_block(ctrl.table_id);
+                }
+                session.set_button(ctrl.table_id, block, layer)?;
+                println!("L{layer} {} → {}", ctrl.name, target);
             }
             let state = session.read_state()?;
-            for b in state.buttons {
+            println!("— Normal (L0) —");
+            for b in &state.buttons {
+                println!("0x{:02x} {:<22} {}", b.table_id, b.name, b.label);
+            }
+            println!("— HyperShift (L1) —");
+            for b in &state.hypershift_buttons {
                 println!("0x{:02x} {:<22} {}", b.table_id, b.name, b.label);
             }
         }
+        Command::Profile { action } => match action {
+            ProfileCmd::Export { slot, output } => {
+                let mut session = DeviceSession::open().context("open device")?;
+                profile_backup::export_slot(&mut session, slot, &output)
+                    .with_context(|| format!("export slot {slot}"))?;
+                println!("exported slot {slot} → {}", output.display());
+            }
+            ProfileCmd::Import { path, slot } => {
+                let mut session = DeviceSession::open().context("open device")?;
+                profile_backup::import_slot(&mut session, &path, slot)
+                    .with_context(|| format!("import {}", path.display()))?;
+                let dest = slot
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "slot from file".into());
+                println!("imported {} → {dest}", path.display());
+            }
+        },
     }
     Ok(())
 }

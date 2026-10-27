@@ -65,6 +65,11 @@ pub fn get_dpi() -> RazerReport {
 pub fn parse_dpi(resp: &RazerReport) -> (u16, u16) {
     let x = (u16::from(resp.arguments[1]) << 8) | u16::from(resp.arguments[2]);
     let y = (u16::from(resp.arguments[3]) << 8) | u16::from(resp.arguments[4]);
+    // Reject empty/garbled frames the dongle sometimes returns under load.
+    // Basilisk V4 Pro always uses matched X/Y in Synapse; mismatched pairs are noise.
+    if x != y || !(100..=DPI_CEILING).contains(&x) {
+        return (0, 0);
+    }
     (x, y)
 }
 
@@ -165,6 +170,12 @@ pub fn get_polling_rate2() -> RazerReport {
 }
 
 pub fn parse_polling_rate2(resp: &RazerReport) -> u32 {
+    // Clean HyperSpeed replies look like `[0x00, code, …]` (Serpentine: V4 Pro `00 08`).
+    // Under load the dongle sometimes echoes a stale DPI frame (`01 03 20 …`) whose
+    // first byte is accidentally a valid 8 kHz code — reject those.
+    if resp.arguments[0] != 0x00 {
+        return 0;
+    }
     POLLING_RATE2
         .iter()
         .find(|(_, code)| *code == resp.arguments[1])
@@ -234,6 +245,38 @@ pub fn set_idle_time(seconds: u16) -> RazerReport {
 
 pub fn parse_idle_time(resp: &RazerReport) -> u16 {
     (u16::from(resp.arguments[0]) << 8) | u16::from(resp.arguments[1])
+}
+
+/// Wireless "Smart Dimming": dims Chroma while the mouse moves, restores after ~3s idle.
+///
+/// Get `0x07/0x93` returns the **active** slot as `[0, flag_a, flag_b]` (either flag
+/// enables the effect). Set `0x07/0x13` is **per onboard slot**: `[slot, flag_a, flag_b]`.
+/// Writing `slot=0` only touches volatile RAM and is lost when switching profiles.
+pub fn get_smart_dimming() -> RazerReport {
+    RazerReport::new(0x07, 0x93, 0x03)
+}
+
+pub fn set_smart_dimming(slot: u8, on: bool) -> RazerReport {
+    let mut r = RazerReport::new(0x07, 0x13, 0x03);
+    r.arguments[0] = slot;
+    let flag = if on { 1 } else { 0 };
+    // Factory / Synapse default uses both flag bytes set together.
+    r.arguments[1] = flag;
+    r.arguments[2] = flag;
+    r
+}
+
+/// Returns `None` when the dongle echoes a stale frame (often DPI `04/85` with
+/// `args[2] != 0`), which would otherwise look like Smart Dimming permanently on.
+pub fn parse_smart_dimming(resp: &RazerReport) -> Option<bool> {
+    if resp.command_class != 0x07 || resp.command_id != 0x93 {
+        return None;
+    }
+    // Clean payload for the active slot: `[0, flag_a≤1, flag_b≤1]`.
+    if resp.arguments[0] != 0 || resp.arguments[1] > 1 || resp.arguments[2] > 1 {
+        return None;
+    }
+    Some(resp.arguments[1] != 0 || resp.arguments[2] != 0)
 }
 
 fn scroll_read(command_id: u8) -> RazerReport {
@@ -322,11 +365,65 @@ pub fn set_button_function(id: u8, block: &[u8; 7], layer: u8) -> RazerReport {
     r
 }
 
-pub fn parse_button_function(resp: &RazerReport, id: u8) -> Option<[u8; 7]> {
+pub fn parse_button_function(resp: &RazerReport, id: u8, layer: u8) -> Option<[u8; 7]> {
+    // Reject stale dongle frames (DPI / lighting leftovers) that would look like remaps.
+    if resp.command_class != 0x02 || resp.command_id != 0x8c {
+        return None;
+    }
     if resp.arguments[1] != id {
+        return None;
+    }
+    let echoed_layer = resp.arguments[2];
+    // Explicit HyperShift binds echo layer 1. Unset ones often return the normal
+    // (layer 0) mapping — that is still what the mouse uses while HyperShift is held.
+    if echoed_layer != layer
+        && !(layer == crate::onboard::LAYER_HYPERSHIFT
+            && echoed_layer == crate::onboard::LAYER_NORMAL)
+    {
         return None;
     }
     let mut block = [0u8; 7];
     block.copy_from_slice(&resp.arguments[3..10]);
+    // Onboard function blocks use size/kind byte 0x01 or 0x02 (Disabled still 0x01).
+    if block[1] != 0x01 && block[1] != 0x02 {
+        return None;
+    }
     Some(block)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn smart_dimming_rejects_stale_dpi_frame() {
+        // Real leftover seen after profile switch: get_dpi `04/85` with args `01 03 20`.
+        let mut stale = RazerReport::new(0x04, 0x85, 0x07);
+        stale.arguments[0] = 0x01;
+        stale.arguments[1] = 0x03;
+        stale.arguments[2] = 0x20;
+        assert_eq!(parse_smart_dimming(&stale), None);
+
+        let off = RazerReport::new(0x07, 0x93, 0x03);
+        assert_eq!(parse_smart_dimming(&off), Some(false));
+
+        let mut on_b2 = RazerReport::new(0x07, 0x93, 0x03);
+        on_b2.arguments[2] = 1;
+        assert_eq!(parse_smart_dimming(&on_b2), Some(true));
+
+        let mut on_b1 = RazerReport::new(0x07, 0x93, 0x03);
+        on_b1.arguments[1] = 1;
+        assert_eq!(parse_smart_dimming(&on_b1), Some(true));
+    }
+
+    #[test]
+    fn smart_dimming_set_addresses_slot() {
+        let r = set_smart_dimming(2, false);
+        assert_eq!(r.command_class, 0x07);
+        assert_eq!(r.command_id, 0x13);
+        assert_eq!(&r.arguments[..3], &[2, 0, 0]);
+
+        let r = set_smart_dimming(1, true);
+        assert_eq!(&r.arguments[..3], &[1, 1, 1]);
+    }
 }

@@ -9,7 +9,7 @@ The trailing **x** nods to Tux. Settings are written into the mouse’s onboard 
 ## Features
 
 - **Onboard profiles** — create, rename, delete and switch firmware slots; the UI follows the mouse profile button
-- **Button remaps** — mouse actions, media keys, HyperShift, and keyboard binds (F1–F12, Super+/Alt+/Ctrl+…) for compositor shortcuts (Hyprland, etc.)
+- **Button remaps** — normal + HyperShift layers from hardware; mouse actions, media keys, and keyboard binds (F1–F24, Super+/Alt+/Ctrl+…) for compositor shortcuts (Hyprland, etc.)
 - **DPI & stages** — set current DPI and stage list; cycle with the DPI button
 - **Polling rate** — configure report rate over USB / HyperSpeed
 - **Zoned lighting** — Logo, Wheel and Underglow; static / spectrum / breathing / etc., with color picker and brightness

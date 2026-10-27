@@ -837,6 +837,8 @@ dependencies = [
  "clap",
  "razer_device",
  "razer_protocol",
+ "serde",
+ "serde_json",
  "synapsex_i18n",
 ]
 
@@ -848,6 +850,7 @@ dependencies = [
  "glib",
  "gtk4",
  "libadwaita",
+ "libc",
  "razer_device",
  "razer_protocol",
  "synapsex_i18n",

@@ -1,0 +1,231 @@
+{
+  "format": 1,
+  "device": "Razer Basilisk V4 Pro (Wireless)",
+  "serial": "IO2636H39301056",
+  "firmware": "v1.1",
+  "captured_at_unix": 1793141851,
+  "note": "Onboard slot 2 \u00abJuegos\u00bb \u2014 restore with: synapsex-cli profile import <file> | L1 tilts changed L/R \u2192 F14/F13 for activity test",
+  "profile": {
+    "slot": 2,
+    "name": "Juegos",
+    "dpi_x": 1600,
+    "dpi_y": 1600,
+    "dpi_stages": [
+      400,
+      900,
+      1600,
+      3200
+    ],
+    "active_dpi_stage": 2,
+    "smart_reel": false,
+    "scroll_accel": false,
+    "smart_reel_level": 2,
+    "scroll_accel_level": 2,
+    "wheel_mode": 0,
+    "poll_hz": 1000,
+    "idle_seconds": 300,
+    "low_battery_percent": 20,
+    "smart_dimming": false,
+    "zones": [
+      {
+        "zone": 4,
+        "zone_name": "Logo",
+        "effect": "Static",
+        "r": 57,
+        "g": 95,
+        "b": 19,
+        "brightness": 50
+      },
+      {
+        "zone": 1,
+        "zone_name": "Wheel",
+        "effect": "Static",
+        "r": 57,
+        "g": 95,
+        "b": 19,
+        "brightness": 50
+      },
+      {
+        "zone": 10,
+        "zone_name": "Underglow",
+        "effect": "Static",
+        "r": 57,
+        "g": 95,
+        "b": 19,
+        "brightness": 50
+      }
+    ],
+    "buttons_l0": [
+      {
+        "table_id": 14,
+        "name": "Left Index",
+        "label": "Cycle Up Profile",
+        "block_hex": "07010400000000"
+      },
+      {
+        "table_id": 1,
+        "name": "Left Click",
+        "label": "Left Click",
+        "block_hex": "01010100000000"
+      },
+      {
+        "table_id": 2,
+        "name": "Right Click",
+        "label": "Right Click",
+        "block_hex": "01010200000000"
+      },
+      {
+        "table_id": 3,
+        "name": "Scroll Click",
+        "label": "Middle Click",
+        "block_hex": "01010300000000"
+      },
+      {
+        "table_id": 9,
+        "name": "Scroll Up",
+        "label": "Scroll Up",
+        "block_hex": "01010900000000"
+      },
+      {
+        "table_id": 10,
+        "name": "Scroll Down",
+        "label": "Scroll Down",
+        "block_hex": "01010a00000000"
+      },
+      {
+        "table_id": 52,
+        "name": "Scroll Left",
+        "label": "Scroll Left",
+        "block_hex": "0e016800140000"
+      },
+      {
+        "table_id": 53,
+        "name": "Scroll Right",
+        "label": "Scroll Right",
+        "block_hex": "0e016900140000"
+      },
+      {
+        "table_id": 106,
+        "name": "Scroll Mode",
+        "label": "Cycle Scroll Mode",
+        "block_hex": "12010100000000"
+      },
+      {
+        "table_id": 96,
+        "name": "DPI",
+        "label": "DPI Cycle Up",
+        "block_hex": "06010600000000"
+      },
+      {
+        "table_id": 57,
+        "name": "Side Trigger",
+        "label": "8",
+        "block_hex": "02020025000000"
+      },
+      {
+        "table_id": 128,
+        "name": "Side Front",
+        "label": "Disabled",
+        "block_hex": "00010000000000"
+      },
+      {
+        "table_id": 5,
+        "name": "Side Middle",
+        "label": "HyperShift",
+        "block_hex": "0c010100000000"
+      },
+      {
+        "table_id": 4,
+        "name": "Side Back",
+        "label": "Back",
+        "block_hex": "01010400000000"
+      }
+    ],
+    "buttons_l1": [
+      {
+        "table_id": 14,
+        "name": "Left Index",
+        "label": "Cycle Up Profile",
+        "block_hex": "07010400000000"
+      },
+      {
+        "table_id": 1,
+        "name": "Left Click",
+        "label": "Left Click",
+        "block_hex": "01010100000000"
+      },
+      {
+        "table_id": 2,
+        "name": "Right Click",
+        "label": "Right Click",
+        "block_hex": "01010200000000"
+      },
+      {
+        "table_id": 3,
+        "name": "Scroll Click",
+        "label": "Middle Click",
+        "block_hex": "01010300000000"
+      },
+      {
+        "table_id": 9,
+        "name": "Scroll Up",
+        "label": "Scroll Up",
+        "block_hex": "01010900000000"
+      },
+      {
+        "table_id": 10,
+        "name": "Scroll Down",
+        "label": "Scroll Down",
+        "block_hex": "01010a00000000"
+      },
+      {
+        "table_id": 52,
+        "name": "Scroll Left",
+        "label": "F14",
+        "block_hex": "02020069000000"
+      },
+      {
+        "table_id": 53,
+        "name": "Scroll Right",
+        "label": "F13",
+        "block_hex": "02020068000000"
+      },
+      {
+        "table_id": 106,
+        "name": "Scroll Mode",
+        "label": "M",
+        "block_hex": "02020010000000"
+      },
+      {
+        "table_id": 96,
+        "name": "DPI",
+        "label": "D",
+        "block_hex": "02020007000000"
+      },
+      {
+        "table_id": 57,
+        "name": "Side Trigger",
+        "label": "HyperShift",
+        "block_hex": "0c010100000000"
+      },
+      {
+        "table_id": 128,
+        "name": "Side Front",
+        "label": "Disabled",
+        "block_hex": "00010000000000"
+      },
+      {
+        "table_id": 5,
+        "name": "Side Middle",
+        "label": "Forward",
+        "block_hex": "01010500000000"
+      },
+      {
+        "table_id": 4,
+        "name": "Side Back",
+        "label": "Back",
+        "block_hex": "01010400000000"
+      }
+    ]
+  }
+}

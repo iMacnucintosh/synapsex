@@ -111,16 +111,28 @@ const fn mouse_block(hid: u8) -> [u8; 7] {
 
 const DISABLED: [u8; 7] = [0x00, 0x01, 0x00, 0, 0, 0, 0];
 
-/// Basilisk V4 Pro onboard button table (from Serpentine hardware probe).
+/// Basilisk V4 Pro onboard buttons — IDs from firmware `02/84` (14 controls).
+/// Names match Serpentine / Synapse layout labels (`HardwareButton` + side cluster).
 pub fn basilisk_v4_pro_buttons() -> &'static [ButtonControl] {
     const BUTTONS: &[ButtonControl] = &[
+        // Serpentine row order (plus Left Click, which Serpentine omits on purpose)
+        ButtonControl {
+            name: "Left Index",
+            table_id: 0x0E,
+            factory: [0x07, 0x01, 0x04, 0, 0, 0, 0],
+        },
+        ButtonControl {
+            name: "Left Click",
+            table_id: 0x01,
+            factory: mouse_block(1),
+        },
         ButtonControl {
             name: "Right Click",
             table_id: 0x02,
             factory: mouse_block(2),
         },
         ButtonControl {
-            name: "Middle Click",
+            name: "Scroll Click",
             table_id: 0x03,
             factory: mouse_block(3),
         },
@@ -135,19 +147,30 @@ pub fn basilisk_v4_pro_buttons() -> &'static [ButtonControl] {
             factory: mouse_block(10),
         },
         ButtonControl {
-            name: "Back",
-            table_id: 0x04,
-            factory: mouse_block(4),
+            name: "Scroll Left",
+            table_id: 0x34,
+            factory: [0x0E, 0x01, 0x68, 0x00, 0x14, 0, 0],
         },
         ButtonControl {
-            name: "Forward",
-            table_id: 0x05,
-            factory: mouse_block(5),
+            name: "Scroll Right",
+            table_id: 0x35,
+            factory: [0x0E, 0x01, 0x69, 0x00, 0x14, 0, 0],
         },
         ButtonControl {
-            name: "DPI Cycle",
+            name: "Scroll Mode",
+            table_id: 0x6A,
+            factory: [0x12, 0x01, 0x01, 0, 0, 0, 0],
+        },
+        ButtonControl {
+            name: "DPI",
             table_id: 0x60,
             factory: [0x06, 0x01, 0x06, 0, 0, 0, 0],
+        },
+        // Thumb: Side Trigger (factory HyperShift) + Side Front / Middle / Back
+        ButtonControl {
+            name: "Side Trigger",
+            table_id: 0x39,
+            factory: [0x0C, 0x01, 0x39, 0, 0, 0, 0],
         },
         ButtonControl {
             name: "Side Front",
@@ -155,29 +178,14 @@ pub fn basilisk_v4_pro_buttons() -> &'static [ButtonControl] {
             factory: DISABLED,
         },
         ButtonControl {
-            name: "Left Side (Profile)",
-            table_id: 0x0E,
-            factory: [0x07, 0x01, 0x04, 0, 0, 0, 0],
+            name: "Side Middle",
+            table_id: 0x05,
+            factory: mouse_block(5),
         },
         ButtonControl {
-            name: "Tilt Left",
-            table_id: 0x34,
-            factory: [0x0E, 0x01, 0x68, 0x00, 0x14, 0, 0],
-        },
-        ButtonControl {
-            name: "Tilt Right",
-            table_id: 0x35,
-            factory: [0x0E, 0x01, 0x69, 0x00, 0x14, 0, 0],
-        },
-        ButtonControl {
-            name: "Side Trigger",
-            table_id: 0x39,
-            factory: [0x0C, 0x01, 0x39, 0, 0, 0, 0],
-        },
-        ButtonControl {
-            name: "Wheel Mode",
-            table_id: 0x6A,
-            factory: [0x12, 0x01, 0x01, 0, 0, 0, 0],
+            name: "Side Back",
+            table_id: 0x04,
+            factory: mouse_block(4),
         },
     ];
     BUTTONS
@@ -186,6 +194,34 @@ pub fn basilisk_v4_pro_buttons() -> &'static [ButtonControl] {
 /// Keyboard function block: type 0x02, `[02, 02, modifiers, hid_usage, 0, 0, 0]`.
 pub const fn keyboard_block(modifiers: u8, hid_usage: u8) -> [u8; 7] {
     [0x02, 0x02, modifiers, hid_usage, 0, 0, 0]
+}
+
+/// Linux/Hyprland keysym for HID Fn (evdev `inet` map). Synapse still calls these
+/// F13–F24, but compositors must bind the XF86* name — `F13` will never match.
+pub fn linux_fn_keysym(f_number: u8) -> Option<&'static str> {
+    match f_number {
+        13 => Some("XF86Tools"),
+        14 => Some("XF86Launch5"),
+        15 => Some("XF86Launch6"),
+        16 => Some("XF86Launch7"),
+        17 => Some("XF86Launch8"),
+        18 => Some("XF86Launch9"),
+        19 => Some("F19"),
+        20 => Some("XF86AudioMicMute"),
+        21 => Some("XF86TouchpadToggle"),
+        22 => Some("XF86TouchpadOn"),
+        23 => Some("XF86TouchpadOff"),
+        24 => Some("F24"),
+        _ => None,
+    }
+}
+
+/// Label for an F-key, including the Linux keysym when it differs (F13+).
+pub fn f_key_label(f_number: u8) -> String {
+    match linux_fn_keysym(f_number) {
+        Some(sym) if sym != format!("F{f_number}") => format!("F{f_number} · {sym}"),
+        _ => format!("F{f_number}"),
+    }
 }
 
 /// USB HID keyboard usage → label (usage page 0x07).
@@ -215,7 +251,7 @@ pub fn hid_key_name(usage: u8) -> String {
         0x36 => ",".into(),
         0x37 => ".".into(),
         0x38 => "/".into(),
-        0x3a..=0x45 => format!("F{}", usage - 0x39), // F1=0x3A … F12=0x45
+        0x3a..=0x45 => f_key_label(usage - 0x39), // F1=0x3A … F12=0x45
         0x46 => "PrintScreen".into(),
         0x47 => "ScrollLock".into(),
         0x48 => "Pause".into(),
@@ -229,9 +265,38 @@ pub fn hid_key_name(usage: u8) -> String {
         0x50 => "Left".into(),
         0x51 => "Down".into(),
         0x52 => "Up".into(),
-        0x6f => "F20".into(),
+        // F13–F24 (HID 0x68–0x73) — Synapse name + Linux/Hypr keysym
+        0x68..=0x73 => f_key_label((usage - 0x68) + 13),
+        // Keypad (numpad)
+        0x54 => "KP_/".into(),
+        0x55 => "KP_*".into(),
+        0x56 => "KP_-".into(),
+        0x57 => "KP_+".into(),
+        0x58 => "KP_Enter".into(),
+        0x59..=0x61 => format!("KP_{}", usage - 0x58), // KP_1..KP_9
+        0x62 => "KP_0".into(),
+        0x63 => "KP_.".into(),
         other => format!("Key 0x{other:02X}"),
     }
+}
+
+/// Normal (0) and HyperShift (1) remap layers stored per button on the mouse.
+pub const LAYER_NORMAL: u8 = 0;
+pub const LAYER_HYPERSHIFT: u8 = 1;
+
+/// True when the onboard block is the HyperShift clutch (type `0x0C`).
+pub fn is_hypershift_block(block: &[u8; 7]) -> bool {
+    block[0] == 0x0C
+}
+
+/// HyperShift clutch block for `table_id`.
+///
+/// Observed on Basilisk V4 Pro (Mac Serpentine / Synapse writes):
+/// - factory Side Trigger (`0x39`): `0C 01 39`
+/// - any other button used as clutch (e.g. Side Middle): `0C 01 01`
+pub const fn hypershift_block(table_id: u8) -> [u8; 7] {
+    let id = if table_id == 0x39 { 0x39 } else { 0x01 };
+    [0x0C, 0x01, id, 0, 0, 0, 0]
 }
 
 pub fn modifier_prefix(modifiers: u8) -> String {
@@ -307,6 +372,8 @@ pub fn describe_block(block: &[u8; 7]) -> String {
                 0x00cd => "Play/Pause".into(),
                 0x00b5 => "Next Track".into(),
                 0x00b6 => "Previous Track".into(),
+                0x006f => "Brightness Up".into(),
+                0x0070 => "Brightness Down".into(),
                 _ => format!("Media 0x{usage:04X}"),
             }
         }
@@ -333,80 +400,293 @@ pub fn blocks_equivalent(a: &[u8; 7], b: &[u8; 7]) -> bool {
     false
 }
 
-/// Common remap targets for the UI (mouse actions + F-keys for compositor binds).
-pub fn remap_presets() -> &'static [(&'static str, [u8; 7])] {
-    const PRESETS: &[(&str, [u8; 7])] = &[
-        ("Disabled", DISABLED),
-        ("Left Click", mouse_block(1)),
-        ("Right Click", mouse_block(2)),
-        ("Middle Click", mouse_block(3)),
-        ("Back", mouse_block(4)),
-        ("Forward", mouse_block(5)),
-        ("DPI Cycle Up", [0x06, 0x01, 0x06, 0, 0, 0, 0]),
-        ("DPI Stage Up", [0x06, 0x01, 0x01, 0, 0, 0, 0]),
-        ("DPI Stage Down", [0x06, 0x01, 0x02, 0, 0, 0, 0]),
-        ("Cycle Up Profile", [0x07, 0x01, 0x04, 0, 0, 0, 0]),
-        ("Cycle Down Profile", [0x07, 0x01, 0x05, 0, 0, 0, 0]),
-        ("HyperShift", [0x0C, 0x01, 0x01, 0, 0, 0, 0]),
-        ("Cycle Scroll Mode", [0x12, 0x01, 0x01, 0, 0, 0, 0]),
-        ("Double Click", [0x0B, 0x01, 0x01, 0, 0, 0, 0]),
-        ("Volume Up", [0x0A, 0x02, 0x00, 0xE9, 0, 0, 0]),
-        ("Volume Down", [0x0A, 0x02, 0x00, 0xEA, 0, 0, 0]),
-        ("Mute", [0x0A, 0x02, 0x00, 0xE2, 0, 0, 0]),
-        ("Play/Pause", [0x0A, 0x02, 0x00, 0xCD, 0, 0, 0]),
-        // Keyboard — common Hyprland / Synapse binds (HID usage page 0x07)
-        ("F1", keyboard_block(0, 0x3a)),
-        ("F2", keyboard_block(0, 0x3b)),
-        ("F3", keyboard_block(0, 0x3c)),
-        ("F4", keyboard_block(0, 0x3d)),
-        ("F5", keyboard_block(0, 0x3e)),
-        ("F6", keyboard_block(0, 0x3f)),
-        ("F7", keyboard_block(0, 0x40)),
-        ("F8", keyboard_block(0, 0x41)),
-        ("F9", keyboard_block(0, 0x42)),
-        ("F10", keyboard_block(0, 0x43)),
-        ("F11", keyboard_block(0, 0x44)),
-        ("F12", keyboard_block(0, 0x45)),
-        ("Esc", keyboard_block(0, 0x29)),
-        ("Tab", keyboard_block(0, 0x2b)),
-        ("Enter", keyboard_block(0, 0x28)),
-        ("Space", keyboard_block(0, 0x2c)),
-        ("Backspace", keyboard_block(0, 0x2a)),
-        ("Delete", keyboard_block(0, 0x4c)),
-        ("Home", keyboard_block(0, 0x4a)),
-        ("End", keyboard_block(0, 0x4d)),
-        ("PageUp", keyboard_block(0, 0x4b)),
-        ("PageDown", keyboard_block(0, 0x4e)),
-        ("Up", keyboard_block(0, 0x52)),
-        ("Down", keyboard_block(0, 0x51)),
-        ("Left", keyboard_block(0, 0x50)),
-        ("Right", keyboard_block(0, 0x4f)),
-        ("Super+F1", keyboard_block(0x08, 0x3a)),
-        ("Super+F2", keyboard_block(0x08, 0x3b)),
-        ("Super+F3", keyboard_block(0x08, 0x3c)),
-        ("Super+F4", keyboard_block(0x08, 0x3d)),
-        ("Super+F5", keyboard_block(0x08, 0x3e)),
-        ("Super+F6", keyboard_block(0x08, 0x3f)),
-        ("Super+F7", keyboard_block(0x08, 0x40)),
-        ("Super+F8", keyboard_block(0x08, 0x41)),
-        ("Super+F9", keyboard_block(0x08, 0x42)),
-        ("Super+F10", keyboard_block(0x08, 0x43)),
-        ("Super+F11", keyboard_block(0x08, 0x44)),
-        ("Super+F12", keyboard_block(0x08, 0x45)),
-        ("Alt+F1", keyboard_block(0x04, 0x3a)),
-        ("Alt+F2", keyboard_block(0x04, 0x3b)),
-        ("Alt+F3", keyboard_block(0x04, 0x3c)),
-        ("Alt+F4", keyboard_block(0x04, 0x3d)),
-        ("Alt+Tab", keyboard_block(0x04, 0x2b)),
-        ("Ctrl+C", keyboard_block(0x01, 0x06)),
-        ("Ctrl+V", keyboard_block(0x01, 0x19)),
-        ("Ctrl+X", keyboard_block(0x01, 0x1b)),
-        ("Ctrl+Z", keyboard_block(0x01, 0x1d)),
-        ("Ctrl+A", keyboard_block(0x01, 0x04)),
-        ("Ctrl+S", keyboard_block(0x01, 0x16)),
-        ("Ctrl+Tab", keyboard_block(0x01, 0x2b)),
+const fn consumer_block(usage: u16) -> [u8; 7] {
+    [0x0A, 0x02, (usage >> 8) as u8, (usage & 0xff) as u8, 0, 0, 0]
+}
+
+/// One item in a remap submenu (Serpentine-style categories).
+#[derive(Clone, Copy, Debug)]
+pub struct RemapItem {
+    pub label: &'static str,
+    pub block: [u8; 7],
+}
+
+/// Named category shown as a submenu in the remap UI.
+#[derive(Clone, Copy, Debug)]
+pub struct RemapCategory {
+    pub id: &'static str,
+    pub items: &'static [RemapItem],
+}
+
+/// Top-row digit keys 1–9, 0 — same blocks Synapse/Serpentine write (`02 02 00 1e…`).
+pub fn remap_digits() -> &'static [RemapItem] {
+    const ITEMS: &[RemapItem] = &[
+        RemapItem { label: "1", block: keyboard_block(0, 0x1e) },
+        RemapItem { label: "2", block: keyboard_block(0, 0x1f) },
+        RemapItem { label: "3", block: keyboard_block(0, 0x20) },
+        RemapItem { label: "4", block: keyboard_block(0, 0x21) },
+        RemapItem { label: "5", block: keyboard_block(0, 0x22) },
+        RemapItem { label: "6", block: keyboard_block(0, 0x23) },
+        RemapItem { label: "7", block: keyboard_block(0, 0x24) },
+        RemapItem { label: "8", block: keyboard_block(0, 0x25) },
+        RemapItem { label: "9", block: keyboard_block(0, 0x26) },
+        RemapItem { label: "0", block: keyboard_block(0, 0x27) },
     ];
-    PRESETS
+    ITEMS
+}
+
+/// Numpad keys KP_1…KP_9, KP_0 (HID 0x59–0x62).
+pub fn remap_keypad() -> &'static [RemapItem] {
+    const ITEMS: &[RemapItem] = &[
+        RemapItem { label: "KP_1", block: keyboard_block(0, 0x59) },
+        RemapItem { label: "KP_2", block: keyboard_block(0, 0x5a) },
+        RemapItem { label: "KP_3", block: keyboard_block(0, 0x5b) },
+        RemapItem { label: "KP_4", block: keyboard_block(0, 0x5c) },
+        RemapItem { label: "KP_5", block: keyboard_block(0, 0x5d) },
+        RemapItem { label: "KP_6", block: keyboard_block(0, 0x5e) },
+        RemapItem { label: "KP_7", block: keyboard_block(0, 0x5f) },
+        RemapItem { label: "KP_8", block: keyboard_block(0, 0x60) },
+        RemapItem { label: "KP_9", block: keyboard_block(0, 0x61) },
+        RemapItem { label: "KP_0", block: keyboard_block(0, 0x62) },
+    ];
+    ITEMS
+}
+
+/// Function-key presets F1–F24 (HID 0x3A–0x45, 0x68–0x73).
+/// F13+ labels include the Linux/Hypr keysym (`XF86…`) so compositor binds match.
+pub fn remap_f_keys() -> &'static [RemapItem] {
+    const ITEMS: &[RemapItem] = &[
+        RemapItem { label: "F1", block: keyboard_block(0, 0x3a) },
+        RemapItem { label: "F2", block: keyboard_block(0, 0x3b) },
+        RemapItem { label: "F3", block: keyboard_block(0, 0x3c) },
+        RemapItem { label: "F4", block: keyboard_block(0, 0x3d) },
+        RemapItem { label: "F5", block: keyboard_block(0, 0x3e) },
+        RemapItem { label: "F6", block: keyboard_block(0, 0x3f) },
+        RemapItem { label: "F7", block: keyboard_block(0, 0x40) },
+        RemapItem { label: "F8", block: keyboard_block(0, 0x41) },
+        RemapItem { label: "F9", block: keyboard_block(0, 0x42) },
+        RemapItem { label: "F10", block: keyboard_block(0, 0x43) },
+        RemapItem { label: "F11", block: keyboard_block(0, 0x44) },
+        RemapItem { label: "F12", block: keyboard_block(0, 0x45) },
+        RemapItem {
+            label: "F13 · XF86Tools",
+            block: keyboard_block(0, 0x68),
+        },
+        RemapItem {
+            label: "F14 · XF86Launch5",
+            block: keyboard_block(0, 0x69),
+        },
+        RemapItem {
+            label: "F15 · XF86Launch6",
+            block: keyboard_block(0, 0x6a),
+        },
+        RemapItem {
+            label: "F16 · XF86Launch7",
+            block: keyboard_block(0, 0x6b),
+        },
+        RemapItem {
+            label: "F17 · XF86Launch8",
+            block: keyboard_block(0, 0x6c),
+        },
+        RemapItem {
+            label: "F18 · XF86Launch9",
+            block: keyboard_block(0, 0x6d),
+        },
+        RemapItem { label: "F19", block: keyboard_block(0, 0x6e) },
+        RemapItem {
+            label: "F20 · XF86AudioMicMute",
+            block: keyboard_block(0, 0x6f),
+        },
+        RemapItem {
+            label: "F21 · XF86TouchpadToggle",
+            block: keyboard_block(0, 0x70),
+        },
+        RemapItem {
+            label: "F22 · XF86TouchpadOn",
+            block: keyboard_block(0, 0x71),
+        },
+        RemapItem {
+            label: "F23 · XF86TouchpadOff",
+            block: keyboard_block(0, 0x72),
+        },
+        RemapItem { label: "F24", block: keyboard_block(0, 0x73) },
+    ];
+    ITEMS
+}
+
+/// Remap menu categories (mirrors Serpentine: Keyboard / Mouse / Sensitivity / Multimedia / …).
+pub fn remap_categories() -> &'static [RemapCategory] {
+    const MOUSE: &[RemapItem] = &[
+        RemapItem { label: "Left Click", block: mouse_block(1) },
+        RemapItem { label: "Right Click", block: mouse_block(2) },
+        RemapItem { label: "Middle Click", block: mouse_block(3) },
+        RemapItem { label: "Back", block: mouse_block(4) },
+        RemapItem { label: "Forward", block: mouse_block(5) },
+        RemapItem { label: "Double Click", block: [0x0B, 0x01, 0x01, 0, 0, 0, 0] },
+        RemapItem { label: "Scroll Up", block: mouse_block(9) },
+        RemapItem { label: "Scroll Down", block: mouse_block(10) },
+        RemapItem {
+            label: "Scroll Left",
+            block: [0x0E, 0x01, 0x68, 0x00, 0x14, 0, 0],
+        },
+        RemapItem {
+            label: "Scroll Right",
+            block: [0x0E, 0x01, 0x69, 0x00, 0x14, 0, 0],
+        },
+    ];
+    const SENSITIVITY: &[RemapItem] = &[
+        RemapItem {
+            label: "DPI Cycle Up",
+            block: [0x06, 0x01, 0x06, 0, 0, 0, 0],
+        },
+        RemapItem {
+            label: "DPI Stage Up",
+            block: [0x06, 0x01, 0x01, 0, 0, 0, 0],
+        },
+        RemapItem {
+            label: "DPI Stage Down",
+            block: [0x06, 0x01, 0x02, 0, 0, 0, 0],
+        },
+    ];
+    const MULTIMEDIA: &[RemapItem] = &[
+        RemapItem {
+            label: "Volume Up",
+            block: consumer_block(0x00e9),
+        },
+        RemapItem {
+            label: "Volume Down",
+            block: consumer_block(0x00ea),
+        },
+        RemapItem {
+            label: "Mute",
+            block: consumer_block(0x00e2),
+        },
+        RemapItem {
+            label: "Play/Pause",
+            block: consumer_block(0x00cd),
+        },
+        RemapItem {
+            label: "Next Track",
+            block: consumer_block(0x00b5),
+        },
+        RemapItem {
+            label: "Previous Track",
+            block: consumer_block(0x00b6),
+        },
+        RemapItem {
+            label: "Brightness Up",
+            block: consumer_block(0x006f),
+        },
+        RemapItem {
+            label: "Brightness Down",
+            block: consumer_block(0x0070),
+        },
+    ];
+    const NAVIGATION: &[RemapItem] = &[
+        RemapItem { label: "Esc", block: keyboard_block(0, 0x29) },
+        RemapItem { label: "Tab", block: keyboard_block(0, 0x2b) },
+        RemapItem { label: "Enter", block: keyboard_block(0, 0x28) },
+        RemapItem { label: "Space", block: keyboard_block(0, 0x2c) },
+        RemapItem { label: "Backspace", block: keyboard_block(0, 0x2a) },
+        RemapItem { label: "Delete", block: keyboard_block(0, 0x4c) },
+        RemapItem { label: "Home", block: keyboard_block(0, 0x4a) },
+        RemapItem { label: "End", block: keyboard_block(0, 0x4d) },
+        RemapItem { label: "PageUp", block: keyboard_block(0, 0x4b) },
+        RemapItem { label: "PageDown", block: keyboard_block(0, 0x4e) },
+        RemapItem { label: "Up", block: keyboard_block(0, 0x52) },
+        RemapItem { label: "Down", block: keyboard_block(0, 0x51) },
+        RemapItem { label: "Left", block: keyboard_block(0, 0x50) },
+        RemapItem { label: "Right", block: keyboard_block(0, 0x4f) },
+        RemapItem { label: "Alt+Tab", block: keyboard_block(0x04, 0x2b) },
+        RemapItem { label: "Ctrl+Tab", block: keyboard_block(0x01, 0x2b) },
+    ];
+    const PROFILE: &[RemapItem] = &[
+        RemapItem {
+            label: "Cycle Up Profile",
+            block: [0x07, 0x01, 0x04, 0, 0, 0, 0],
+        },
+        RemapItem {
+            label: "Cycle Down Profile",
+            block: [0x07, 0x01, 0x05, 0, 0, 0, 0],
+        },
+        RemapItem {
+            label: "Cycle Scroll Mode",
+            block: [0x12, 0x01, 0x01, 0, 0, 0, 0],
+        },
+        RemapItem {
+            // Placeholder; writers must call `hypershift_block(table_id)` before send.
+            label: "HyperShift",
+            block: [0x0C, 0x01, 0x00, 0, 0, 0, 0],
+        },
+    ];
+    const SHORTCUTS: &[RemapItem] = &[
+        RemapItem { label: "Super+F1", block: keyboard_block(0x08, 0x3a) },
+        RemapItem { label: "Super+F2", block: keyboard_block(0x08, 0x3b) },
+        RemapItem { label: "Super+F3", block: keyboard_block(0x08, 0x3c) },
+        RemapItem { label: "Super+F4", block: keyboard_block(0x08, 0x3d) },
+        RemapItem { label: "Super+F5", block: keyboard_block(0x08, 0x3e) },
+        RemapItem { label: "Super+F6", block: keyboard_block(0x08, 0x3f) },
+        RemapItem { label: "Super+F7", block: keyboard_block(0x08, 0x40) },
+        RemapItem { label: "Super+F8", block: keyboard_block(0x08, 0x41) },
+        RemapItem { label: "Super+F9", block: keyboard_block(0x08, 0x42) },
+        RemapItem { label: "Super+F10", block: keyboard_block(0x08, 0x43) },
+        RemapItem { label: "Super+F11", block: keyboard_block(0x08, 0x44) },
+        RemapItem { label: "Super+F12", block: keyboard_block(0x08, 0x45) },
+        RemapItem { label: "Ctrl+C", block: keyboard_block(0x01, 0x06) },
+        RemapItem { label: "Ctrl+V", block: keyboard_block(0x01, 0x19) },
+        RemapItem { label: "Ctrl+X", block: keyboard_block(0x01, 0x1b) },
+        RemapItem { label: "Ctrl+Z", block: keyboard_block(0x01, 0x1d) },
+        RemapItem { label: "Ctrl+A", block: keyboard_block(0x01, 0x04) },
+        RemapItem { label: "Ctrl+S", block: keyboard_block(0x01, 0x16) },
+    ];
+    const CATS: &[RemapCategory] = &[
+        RemapCategory {
+            id: "mouse",
+            items: MOUSE,
+        },
+        RemapCategory {
+            id: "sensitivity",
+            items: SENSITIVITY,
+        },
+        RemapCategory {
+            id: "multimedia",
+            items: MULTIMEDIA,
+        },
+        RemapCategory {
+            id: "navigation",
+            items: NAVIGATION,
+        },
+        RemapCategory {
+            id: "shortcuts",
+            items: SHORTCUTS,
+        },
+        RemapCategory {
+            id: "profile",
+            items: PROFILE,
+        },
+    ];
+    CATS
+}
+
+/// Flat list of every known preset (CLI / search). Includes F-keys + category items + Disabled.
+pub fn remap_presets() -> Vec<(&'static str, [u8; 7])> {
+    let mut out = Vec::new();
+    out.push(("Disabled", DISABLED));
+    for item in remap_digits() {
+        out.push((item.label, item.block));
+    }
+    for item in remap_keypad() {
+        out.push((item.label, item.block));
+    }
+    for item in remap_f_keys() {
+        out.push((item.label, item.block));
+    }
+    for cat in remap_categories() {
+        for item in cat.items {
+            out.push((item.label, item.block));
+        }
+    }
+    out
 }
 
 /// Factory settings for a freshly created / reset slot (V4 Pro USB).
@@ -436,4 +716,24 @@ pub fn factory_settings_reports() -> Vec<RazerReport> {
         reports.push(r);
     }
     reports
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn linux_fn_keysyms_match_xkb_inet() {
+        assert_eq!(linux_fn_keysym(13), Some("XF86Tools"));
+        assert_eq!(linux_fn_keysym(14), Some("XF86Launch5"));
+        assert_eq!(linux_fn_keysym(15), Some("XF86Launch6"));
+        assert_eq!(linux_fn_keysym(16), Some("XF86Launch7"));
+        assert_eq!(linux_fn_keysym(17), Some("XF86Launch8"));
+        assert_eq!(linux_fn_keysym(18), Some("XF86Launch9"));
+        assert_eq!(linux_fn_keysym(20), Some("XF86AudioMicMute"));
+        assert_eq!(f_key_label(6), "F6");
+        assert_eq!(f_key_label(13), "F13 · XF86Tools");
+        assert_eq!(hid_key_name(0x68), "F13 · XF86Tools");
+        assert_eq!(hid_key_name(0x69), "F14 · XF86Launch5");
+    }
 }

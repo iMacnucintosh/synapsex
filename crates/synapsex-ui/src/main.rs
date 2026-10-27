@@ -1,4 +1,6 @@
 mod app;
+mod hid_async;
+mod remap_menu;
 
 use adw::prelude::*;
 use anyhow::Result;
