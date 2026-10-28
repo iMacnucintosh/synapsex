@@ -6,6 +6,8 @@ The trailing **x** nods to Tux. Settings are written into the mouse’s onboard 
 
 > Not affiliated with Razer Inc.
 
+![Buttons page](docs/screenshots/buttons.png)
+
 ![Lighting page](docs/screenshots/lighting.png)
 
 ## Features
