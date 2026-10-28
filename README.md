@@ -8,6 +8,8 @@ The trailing **x** nods to Tux. Settings are written into the mouse’s onboard 
 
 ![Buttons page](docs/screenshots/buttons.png)
 
+![Lighting page](docs/screenshots/lighting.png)
+
 ## Features
 
 - **Onboard profiles** — create, rename, delete and switch firmware slots; the UI follows the mouse profile button
