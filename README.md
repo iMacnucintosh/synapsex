@@ -4,7 +4,7 @@
 
 The trailing **x** nods to Tux. Settings are written into the mouse’s onboard memory and keep working with the app closed.
 
-> Not affiliated with Razer Inc. Protocol knowledge is ported from [Serpentine](https://github.com/fn-milans/Serpentine) (macOS) and [OpenRazer](https://github.com/openrazer/openrazer).
+> Not affiliated with Razer Inc.
 
 ![Lighting page](docs/screenshots/lighting.png)
 
