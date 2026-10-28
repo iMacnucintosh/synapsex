@@ -1,0 +1,44 @@
+# Maintainer: Manuel López Mallorquín <https://github.com/iMacnucintosh>
+
+pkgname=synapsex-git
+pkgver=0.1.0.r0.g0000000
+pkgrel=1
+pkgdesc="Unofficial GTK4/libadwaita app for the Razer Basilisk V4 Pro (USB / HyperSpeed)"
+arch=('x86_64' 'aarch64')
+url="https://github.com/iMacnucintosh/synapsex"
+license=('GPL-2.0-or-later')
+depends=('gtk4' 'libadwaita' 'hicolor-icon-theme')
+makedepends=('cargo' 'git' 'pkgconf')
+provides=('synapsex')
+conflicts=('synapsex')
+install=synapsex-git.install
+source=("$pkgname::git+https://github.com/iMacnucintosh/synapsex.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "$pkgname"
+  printf "0.1.0.r%s.g%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+prepare() {
+  cd "$pkgname"
+  export CARGO_HOME="$srcdir/cargo-home"
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd "$pkgname"
+  export CARGO_HOME="$srcdir/cargo-home"
+  export CARGO_TARGET_DIR=target
+  cargo build --frozen --release
+}
+
+package() {
+  cd "$pkgname"
+  install -Dm755 target/release/synapsex "$pkgdir/usr/bin/synapsex"
+  install -Dm755 target/release/synapsex-cli "$pkgdir/usr/bin/synapsex-cli"
+  install -Dm644 packaging/synapsex.desktop "$pkgdir/usr/share/applications/synapsex.desktop"
+  install -Dm644 packaging/99-synapsex.rules "$pkgdir/usr/lib/udev/rules.d/99-synapsex.rules"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 NOTICE.md "$pkgdir/usr/share/doc/synapsex/NOTICE.md"
+}

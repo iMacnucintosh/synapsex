@@ -82,6 +82,30 @@ pub fn profile_actions() -> &'static str {
     tr!("Acciones de perfil", "Profile actions")
 }
 
+pub fn no_session() -> &'static str {
+    tr!("No hay ratón conectado", "No mouse connected")
+}
+
+pub fn lighting_current_title() -> &'static str {
+    tr!("Estado actual", "Current state")
+}
+
+pub fn remap_picker_title() -> &'static str {
+    tr!("Asignar acción", "Assign action")
+}
+
+pub fn remap_search_placeholder() -> &'static str {
+    tr!("Buscar acción…", "Search actions…")
+}
+
+pub fn remap_categories_title() -> &'static str {
+    tr!("Categorías", "Categories")
+}
+
+pub fn remap_no_results() -> &'static str {
+    tr!("Sin resultados", "No results")
+}
+
 pub fn rename_dialog_title() -> &'static str {
     tr!("Renombrar perfil", "Rename profile")
 }
@@ -114,6 +138,43 @@ pub fn dpi_current_title() -> &'static str {
 
 pub fn dpi_stages_title() -> &'static str {
     tr!("Etapas DPI", "DPI stages")
+}
+
+pub fn dpi_stages_desc() -> &'static str {
+    tr!(
+        "El botón DPI del ratón recorre estas etapas.",
+        "The mouse DPI button cycles through these stages."
+    )
+}
+
+pub fn dpi_stage_label(n: usize) -> String {
+    match lang() {
+        Lang::Es => format!("Etapa {n}"),
+        Lang::En => format!("Stage {n}"),
+    }
+}
+
+pub fn dpi_stage_of(n: usize, count: usize) -> String {
+    match lang() {
+        Lang::Es => format!("Etapa {n} de {count}"),
+        Lang::En => format!("Stage {n} of {count}"),
+    }
+}
+
+pub fn dpi_stage_in_use() -> &'static str {
+    tr!("En uso", "In use")
+}
+
+pub fn add_dpi_stage() -> &'static str {
+    tr!("Añadir etapa", "Add stage")
+}
+
+pub fn remove_dpi_stage() -> &'static str {
+    tr!("Quitar etapa", "Remove stage")
+}
+
+pub fn brightness_pct(p: u8) -> String {
+    format!("{p}%")
 }
 
 pub fn zone_title() -> &'static str {
@@ -611,6 +672,17 @@ pub fn slot_subtitle(dpi_x: u16, dpi_y: u16, stages: &str, wheel: u8, lights: &s
 
 pub fn loading_device() -> &'static str {
     tr!("Leyendo ratón…", "Reading mouse…")
+}
+
+pub fn loading_placeholder_body() -> &'static str {
+    tr!(
+        "Leyendo el perfil activo y los botones del ratón.",
+        "Reading the active profile and mouse buttons."
+    )
+}
+
+pub fn retry() -> &'static str {
+    tr!("Reintentar", "Retry")
 }
 
 pub fn no_mouse(err: &str) -> String {

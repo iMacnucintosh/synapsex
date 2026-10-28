@@ -1,16 +1,18 @@
 # Synapsex
 
-**Razer Synapse for Linux** — unofficial control app for the [Razer Basilisk V4 Pro](https://www.razer.com/).
+**Razer Synapse for Linux** — unofficial GTK4/libadwaita control app for the [Razer Basilisk V4 Pro](https://www.razer.com/).
 
 The trailing **x** nods to Tux. Settings are written into the mouse’s onboard memory and keep working with the app closed.
 
 > Not affiliated with Razer Inc. Protocol knowledge is ported from [Serpentine](https://github.com/fn-milans/Serpentine) (macOS) and [OpenRazer](https://github.com/openrazer/openrazer).
 
+![Lighting page](docs/screenshots/lighting.png)
+
 ## Features
 
 - **Onboard profiles** — create, rename, delete and switch firmware slots; the UI follows the mouse profile button
 - **Button remaps** — normal + HyperShift layers from hardware; mouse actions, media keys, and keyboard binds (F1–F24, Super+/Alt+/Ctrl+…) for compositor shortcuts (Hyprland, etc.)
-- **DPI & stages** — set current DPI and stage list; cycle with the DPI button
+- **DPI & stages** — set current DPI and the onboard stage list; cycle with the DPI button
 - **Polling rate** — configure report rate over USB / HyperSpeed
 - **Zoned lighting** — Logo, Wheel and Underglow; static / spectrum / breathing / etc., with color picker and brightness
 - **Scroll wheel** — Smart-Reel, scroll acceleration, free-spin / tactile mode
@@ -21,17 +23,34 @@ The trailing **x** nods to Tux. Settings are written into the mouse’s onboard 
 
 ## Supported hardware
 
-| Connection | USB IDs |
-|---|---|
-| USB cable | `1532:00E2` |
-| HyperSpeed 2.4 GHz dongle | `1532:00E3` |
+| Connection | USB IDs | Supported |
+|---|---|---|
+| USB cable | `1532:00E2` | Yes |
+| HyperSpeed 2.4 GHz dongle | `1532:00E3` | Yes |
+| Bluetooth | `1532:00E4` | No — Razer does not expose vendor HID reports over BT |
+
+Configure the mouse over the cable or the HyperSpeed dongle. Bluetooth stays a connection, not a configuration channel.
 
 ## Requirements
 
-- Linux (developed on Arch)
+- Linux (developed on Arch + Hyprland)
 - `rust`, `gtk4`, `libadwaita`, `pkgconf`
 
+## Arch Linux
+
+A `synapsex-git` PKGBUILD lives in [`packaging/aur/synapsex-git/`](packaging/aur/synapsex-git/). Until it is on the AUR:
+
+```sh
+git clone https://github.com/iMacnucintosh/synapsex.git
+cd synapsex/packaging/aur/synapsex-git
+makepkg -si
+```
+
+Or install from a source checkout with `cargo` as below.
+
 ## Permissions
+
+The mouse is a hidraw device. Copy the udev rule, reload, and replug:
 
 ```sh
 sudo cp packaging/99-synapsex.rules /etc/udev/rules.d/
@@ -40,20 +59,29 @@ sudo udevadm trigger
 # log out/in or replug the dongle if /dev/hidraw* is still root-only
 ```
 
+The AUR package installs the same rule to `/usr/lib/udev/rules.d/`.
+
 ## Build
 
 ```sh
 cargo build --release
 ```
 
-Binaries:
-
 | Binary | Role |
 |---|---|
 | `target/release/synapsex` | GTK4 app |
 | `target/release/synapsex-cli` | CLI probe / configure |
 
-Desktop entry: `packaging/synapsex.desktop` (adjust `Exec=` to your install path).
+Install onto `PATH` (needed by the desktop entry):
+
+```sh
+install -Dm755 target/release/synapsex ~/.local/bin/synapsex
+install -Dm755 target/release/synapsex-cli ~/.local/bin/synapsex-cli
+install -Dm644 packaging/synapsex.desktop ~/.local/share/applications/synapsex.desktop
+update-desktop-database ~/.local/share/applications 2>/dev/null || true
+```
+
+`~/.local/bin` must be on your `PATH`. Rebuild after UI changes: `cargo build --release -p synapsex-ui`.
 
 ## CLI examples
 
@@ -86,7 +114,8 @@ crates/
   synapsex-i18n/    # ES/EN strings
   synapsex-cli/     # synapsex-cli binary
   synapsex-ui/      # synapsex GTK UI
-packaging/          # udev rules + .desktop
+packaging/          # udev rules, .desktop, AUR PKGBUILD
+docs/screenshots/   # README images
 ```
 
 ## License

@@ -1,6 +1,11 @@
 mod app;
+mod color;
+mod ctx;
+mod header;
 mod hid_async;
-mod remap_menu;
+mod pages;
+mod remap_picker;
+mod theme;
 
 use adw::prelude::*;
 use anyhow::Result;
